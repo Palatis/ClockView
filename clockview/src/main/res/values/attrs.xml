@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ClockView">
+        <attr name="is24hr" format="boolean"/>
+        <attr name="drawReversed" format="boolean"/>
+        <attr name="hour" format="float"/>
+        <attr name="minute" format="float"/>
+        <attr name="second" format="float"/>
+
+        <attr name="numHands" format="integer"/>
+
+        <attr name="dial" format="reference"/>
+
+        <attr name="hand_hour" format="reference"/>
+        <attr name="hand_hour_div" format="integer"/>
+        <attr name="hand_hour_interval" format="integer"/>
+        <attr name="hand_hour_cx" format="float"/>
+        <attr name="hand_hour_cy" format="float"/>
+        <attr name="hand_hour_startAngle" format="float"/>
+
+        <attr name="hand_minute" format="reference"/>
+        <attr name="hand_minute_div" format="integer"/>
+        <attr name="hand_minute_interval" format="integer"/>
+        <attr name="hand_minute_cx" format="float"/>
+        <attr name="hand_minute_cy" format="float"/>
+        <attr name="hand_minute_startAngle" format="float"/>
+
+        <attr name="hand_second" format="reference"/>
+        <attr name="hand_second_div" format="integer"/>
+        <attr name="hand_second_interval" format="integer"/>
+        <attr name="hand_second_cx" format="float"/>
+        <attr name="hand_second_cy" format="float"/>
+        <attr name="hand_second_startAngle" format="float"/>
+    </declare-styleable>
+</resources>
