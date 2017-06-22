@@ -13,16 +13,21 @@ import android.support.annotation.DrawableRes;
 import android.support.annotation.Nullable;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v4.view.MotionEventCompat;
+import android.support.v4.view.NestedScrollingChild;
+import android.support.v4.view.NestedScrollingChildHelper;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
+import java.util.Arrays;
 import java.util.Calendar;
 
-import static android.content.ContentValues.TAG;
+public class ClockView extends View implements NestedScrollingChild {
+    private static final String TAG = "ClockView";
 
-public class ClockView extends View {
+    private final NestedScrollingChildHelper mNestedChildHelper = new NestedScrollingChildHelper(this);
+
     private Calendar mCalendar;
 
     private boolean mSizeChanged = true;
@@ -83,6 +88,8 @@ public class ClockView extends View {
         try {
             final Resources.Theme theme = context.getTheme();
             final Resources res = getResources();
+
+            mNestedChildHelper.setNestedScrollingEnabled(a.getBoolean(R.styleable.ClockView_android_nestedScrollingEnabled, true));
 
             mIs24hr = a.getBoolean(R.styleable.ClockView_is24hr, false);
             mDrawReversed = a.getBoolean(R.styleable.ClockView_drawReversed, true);
@@ -332,11 +339,12 @@ public class ClockView extends View {
                 mHandIndex = getHandByLocation(eventX, eventY);
                 if (mHandIndex != -1) {
                     boolean shouldHandle = true;
-                    if (mOnHandChangedListener != null)
+                    if (mOnHandChangedListener != null) {
+                        mNestedChildHelper.startNestedScroll(SCROLL_AXIS_HORIZONTAL | SCROLL_AXIS_VERTICAL);
                         shouldHandle = mOnHandChangedListener.onHandChangeBegin(this, mHandIndex);
+                    }
                     if (shouldHandle) {
                         Log.d(TAG, "onTouchEvent(): starting with index = " + mHandIndex);
-                        getParent().requestDisallowInterceptTouchEvent(true);
                         return true;
                     } else {
                         mHandIndex = -1;
@@ -349,17 +357,16 @@ public class ClockView extends View {
                 if (mHandIndex == -1)
                     return false;
 
-                handleHandDrag(mHandIndex, mLastTouchX, mLastTouchY, eventX, eventY);
+                if (mNestedChildHelper.isNestedScrollingEnabled())
+                    handleHandDrag(mHandIndex, mLastTouchX, mLastTouchY, eventX, eventY);
                 mLastTouchX = eventX;
                 mLastTouchY = eventY;
                 return true;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
             case MotionEvent.ACTION_CANCEL:
-                if (mOnHandChangedListener != null)
+                if (mOnHandChangedListener != null && mNestedChildHelper.isNestedScrollingEnabled())
                     mOnHandChangedListener.onHandChangeEnd(this, mHandIndex);
-
-                getParent().requestDisallowInterceptTouchEvent(false);
                 mHandIndex = -1;
                 return true;
         }
@@ -491,6 +498,51 @@ public class ClockView extends View {
                 animator.start();
             }
         }
+    }
+
+    @Override
+    public void setNestedScrollingEnabled(boolean enabled) {
+        mNestedChildHelper.setNestedScrollingEnabled(enabled);
+    }
+
+    @Override
+    public boolean isNestedScrollingEnabled() {
+        return mNestedChildHelper.isNestedScrollingEnabled();
+    }
+
+    @Override
+    public boolean startNestedScroll(int axes) {
+        return mNestedChildHelper.startNestedScroll(axes);
+    }
+
+    @Override
+    public void stopNestedScroll() {
+        mNestedChildHelper.stopNestedScroll();
+    }
+
+    @Override
+    public boolean hasNestedScrollingParent() {
+        return mNestedChildHelper.hasNestedScrollingParent();
+    }
+
+    @Override
+    public boolean dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int[] offsetInWindow) {
+        return mNestedChildHelper.dispatchNestedScroll(dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, offsetInWindow);
+    }
+
+    @Override
+    public boolean dispatchNestedPreScroll(int dx, int dy, int[] consumed, int[] offsetInWindow) {
+        return mNestedChildHelper.dispatchNestedPreScroll(dx, dy, consumed, offsetInWindow);
+    }
+
+    @Override
+    public boolean dispatchNestedFling(float velocityX, float velocityY, boolean consumed) {
+        return mNestedChildHelper.dispatchNestedFling(velocityX, velocityY, consumed);
+    }
+
+    @Override
+    public boolean dispatchNestedPreFling(float velocityX, float velocityY) {
+        return mNestedChildHelper.dispatchNestedPreFling(velocityX, velocityY);
     }
 
     public interface OnHandChangedListener {

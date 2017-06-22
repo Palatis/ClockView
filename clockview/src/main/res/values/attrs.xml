@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="ClockView">
+        <attr name="android:nestedScrollingEnabled" />
 
         <attr name="is24hr" format="boolean" />
         <attr name="drawReversed" format="boolean" />
