@@ -162,7 +162,7 @@ public class ClockView extends View {
         if (mDialDrawable != null)
             mDialDrawable.setCallback(this);
 
-        postInvalidateOnAnimation();
+        requestLayout();
     }
 
     public void setHandDrawable(int index, @DrawableRes int drawable) {
@@ -180,7 +180,7 @@ public class ClockView extends View {
         if (hand.drawable != null)
             hand.drawable.setCallback(this);
 
-        postInvalidateOnAnimation();
+        requestLayout();
     }
 
     public void setTime(long time) {
