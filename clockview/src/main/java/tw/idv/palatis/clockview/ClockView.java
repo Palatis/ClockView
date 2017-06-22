@@ -231,9 +231,8 @@ public class ClockView extends View {
                 drawHand(canvas, mHandOverlays[i], sizeChanged, dialWidth, dialHeight, cX, cY);
             }
         } else {
-            for (int i = 0; i < mHandOverlays.length; ++i) {
-                drawHand(canvas, mHandOverlays[i], sizeChanged, dialWidth, dialHeight, cX, cY);
-            }
+            for (final HandOverlay hand : mHandOverlays)
+                drawHand(canvas, hand, sizeChanged, dialWidth, dialHeight, cX, cY);
         }
 
         if (scaled) {
@@ -265,26 +264,38 @@ public class ClockView extends View {
         final int widthSize = MeasureSpec.getSize(widthMeasureSpec);
         final int heightMode = MeasureSpec.getMode(heightMeasureSpec);
         final int heightSize = MeasureSpec.getSize(heightMeasureSpec);
-        float hScale = 1.0f;
-        float vScale = 1.0f;
-
-        final int contentWidth = widthSize - getPaddingRight() - getPaddingLeft();
-        final int contentHeight = heightSize - getPaddingBottom() - getPaddingTop();
 
         final int minWidth = getSuggestedMinimumWidth();
         final int minHeight = getSuggestedMinimumHeight();
 
-        if (widthMode != MeasureSpec.UNSPECIFIED && contentWidth < minWidth)
-            hScale = (float) contentWidth / (float) minWidth;
+        int width;
+        int height;
 
-        if (heightMode != MeasureSpec.UNSPECIFIED && contentHeight < minHeight)
-            vScale = (float) contentHeight / (float) minHeight;
+        //Measure Width
+        if (widthMode == MeasureSpec.EXACTLY) {
+            //Must be this size
+            width = widthSize;
+        } else if (widthMode == MeasureSpec.AT_MOST) {
+            //Can't be bigger than...
+            width = Math.min(minWidth, widthSize);
+        } else {
+            //Be whatever you want
+            width = minWidth;
+        }
 
-        final float scale = Math.min(hScale, vScale);
-        setMeasuredDimension(
-                getDefaultSize((int) ((float) minWidth * scale) + getPaddingLeft() + getPaddingRight(), widthMeasureSpec),
-                getDefaultSize((int) ((float) minHeight * scale) + getPaddingTop() + getPaddingBottom(), heightMeasureSpec)
-        );
+        //Measure Height
+        if (heightMode == MeasureSpec.EXACTLY) {
+            //Must be this size
+            height = heightSize;
+        } else if (heightMode == MeasureSpec.AT_MOST) {
+            //Can't be bigger than...
+            height = Math.min(minHeight, heightSize);
+        } else {
+            //Be whatever you want
+            height = minHeight;
+        }
+
+        setMeasuredDimension(width, height);
     }
 
     private int getDialWidth() {
