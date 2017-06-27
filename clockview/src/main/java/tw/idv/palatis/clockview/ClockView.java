@@ -20,7 +20,6 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
-import java.util.Arrays;
 import java.util.Calendar;
 
 public class ClockView extends View implements NestedScrollingChild {
@@ -338,7 +337,7 @@ public class ClockView extends View implements NestedScrollingChild {
                 mLastTouchY = eventY;
                 mHandIndex = getHandByLocation(eventX, eventY);
                 if (mHandIndex != -1) {
-                    boolean shouldHandle = true;
+                    boolean shouldHandle = false;
                     if (mOnHandChangedListener != null) {
                         mNestedChildHelper.startNestedScroll(SCROLL_AXIS_HORIZONTAL | SCROLL_AXIS_VERTICAL);
                         shouldHandle = mOnHandChangedListener.onHandChangeBegin(this, mHandIndex);
