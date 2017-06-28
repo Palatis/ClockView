@@ -343,6 +343,7 @@ public class ClockView extends View implements NestedScrollingChild {
                         shouldHandle = mOnHandChangedListener.onHandChangeBegin(this, mHandIndex);
                     }
                     if (shouldHandle) {
+                        getParent().requestDisallowInterceptTouchEvent(true);
                         Log.d(TAG, "onTouchEvent(): starting with index = " + mHandIndex);
                         return true;
                     } else {
@@ -364,8 +365,10 @@ public class ClockView extends View implements NestedScrollingChild {
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
             case MotionEvent.ACTION_CANCEL:
-                if (mOnHandChangedListener != null && mNestedChildHelper.isNestedScrollingEnabled())
+                if (mOnHandChangedListener != null && mNestedChildHelper.isNestedScrollingEnabled()) {
                     mOnHandChangedListener.onHandChangeEnd(this, mHandIndex);
+                    getParent().requestDisallowInterceptTouchEvent(false);
+                }
                 mHandIndex = -1;
                 return true;
         }
