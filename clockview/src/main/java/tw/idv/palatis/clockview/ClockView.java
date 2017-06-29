@@ -178,7 +178,7 @@ public class ClockView extends View implements NestedScrollingChild {
     }
 
     public void setDialDrawable(@Nullable Drawable drawable) {
-        if (mDialDrawableResId != drawable) {
+        if (mDialDrawable != drawable) {
             mDialDrawableResId = -1;
             setDialDrawableInternal(drawable);
         }
