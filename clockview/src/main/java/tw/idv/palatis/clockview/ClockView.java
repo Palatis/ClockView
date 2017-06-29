@@ -15,6 +15,7 @@ import android.support.v4.content.res.ResourcesCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.NestedScrollingChild;
 import android.support.v4.view.NestedScrollingChildHelper;
+import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -33,6 +34,8 @@ public class ClockView extends View implements NestedScrollingChild {
 
     private boolean mIs24hr;
     private boolean mDrawReversed;
+    @DrawableRes
+    private int mDialDrawableResId;
     private Drawable mDialDrawable;
     private HandOverlay[] mHandOverlays;
 
@@ -47,10 +50,13 @@ public class ClockView extends View implements NestedScrollingChild {
         public float startAngle;
         public float ratio_cx;
         public float ratio_cy;
+        @DrawableRes
+        public int drawableResId;
         public Drawable drawable;
         public ValueAnimator animator = null;
 
-        public HandOverlay(@Nullable Drawable drawable, float value, float division, float startAngle, float ratio_cx, float ratio_cy, long interval) {
+        public HandOverlay(@DrawableRes int drawableResId, @Nullable Drawable drawable, float value, float division, float startAngle, float ratio_cx, float ratio_cy, long interval) {
+            this.drawableResId = drawableResId;
             this.drawable = drawable;
             this.value = value;
             this.division = division;
@@ -92,9 +98,12 @@ public class ClockView extends View implements NestedScrollingChild {
 
             mIs24hr = a.getBoolean(R.styleable.ClockView_is24hr, false);
             mDrawReversed = a.getBoolean(R.styleable.ClockView_drawReversed, true);
+            mDialDrawableResId = a.getResourceId(R.styleable.ClockView_dial, -1);
             mDialDrawable = a.getDrawable(R.styleable.ClockView_dial);
-            if (mDialDrawable == null)
+            if (mDialDrawable == null) {
+                mDialDrawableResId = R.drawable.cv_default_dial;
                 mDialDrawable = ResourcesCompat.getDrawable(res, R.drawable.cv_default_dial, theme);
+            }
             if (mDialDrawable != null)
                 mDialDrawable.setCallback(this);
 
@@ -102,6 +111,7 @@ public class ClockView extends View implements NestedScrollingChild {
             mHandOverlays = new HandOverlay[numHands];
 
             mHandOverlays[HAND_HOUR] = new HandOverlay(
+                    a.getResourceId(R.styleable.ClockView_hand_hour, -1),
                     a.getDrawable(R.styleable.ClockView_hand_hour),
                     a.getInt(R.styleable.ClockView_hour, now.get(mIs24hr ? Calendar.HOUR_OF_DAY : Calendar.HOUR)),
                     a.getFloat(R.styleable.ClockView_hand_hour_div, 360.0f / (mIs24hr ? 24.0f : 12.0f)), // 1/12 or 1/24 per hour
@@ -110,12 +120,15 @@ public class ClockView extends View implements NestedScrollingChild {
                     a.getFloat(R.styleable.ClockView_hand_hour_cy, 0.5f),
                     a.getInt(R.styleable.ClockView_hand_hour_interval, 3600 * 1000) // updates every 3600 sec
             );
-            if (mHandOverlays[HAND_HOUR].drawable == null)
+            if (mHandOverlays[HAND_HOUR].drawable == null) {
+                mHandOverlays[HAND_HOUR].drawableResId = R.drawable.cv_default_hand_hour;
                 mHandOverlays[HAND_HOUR].drawable = ResourcesCompat.getDrawable(res, R.drawable.cv_default_hand_hour, theme);
+            }
             if (mHandOverlays[HAND_HOUR].drawable != null)
                 mHandOverlays[HAND_HOUR].drawable.setCallback(this);
 
             mHandOverlays[HAND_MINUTE] = new HandOverlay(
+                    a.getResourceId(R.styleable.ClockView_hand_minute, -1),
                     a.getDrawable(R.styleable.ClockView_hand_minute),
                     a.getInt(R.styleable.ClockView_minute, now.get(Calendar.MINUTE)),
                     a.getFloat(R.styleable.ClockView_hand_minute_div, 360.0f / 60.0f), // 1/60 per minute
@@ -124,12 +137,15 @@ public class ClockView extends View implements NestedScrollingChild {
                     a.getFloat(R.styleable.ClockView_hand_minute_cy, 0.5f),
                     a.getInt(R.styleable.ClockView_hand_minute_interval, 60 * 1000) // updates every 60 sec
             );
-            if (mHandOverlays[HAND_MINUTE].drawable == null)
+            if (mHandOverlays[HAND_MINUTE].drawable == null) {
+                mHandOverlays[HAND_MINUTE].drawableResId = R.drawable.cv_default_hand_minute;
                 mHandOverlays[HAND_MINUTE].drawable = ResourcesCompat.getDrawable(res, R.drawable.cv_default_hand_minute, theme);
+            }
             if (mHandOverlays[HAND_MINUTE].drawable != null)
                 mHandOverlays[HAND_MINUTE].drawable.setCallback(this);
 
             mHandOverlays[HAND_SECOND] = new HandOverlay(
+                    a.getResourceId(R.styleable.ClockView_hand_second, -1),
                     a.getDrawable(R.styleable.ClockView_hand_second),
                     a.getInt(R.styleable.ClockView_second, now.get(Calendar.SECOND)),
                     a.getFloat(R.styleable.ClockView_hand_second_div, 360.0f / 60.0f), // 1/60 per second
@@ -150,42 +166,55 @@ public class ClockView extends View implements NestedScrollingChild {
         final int count = Math.min(n, mHandOverlays.length);
         System.arraycopy(mHandOverlays, 0, newHands, 0, count);
         for (int i = count; i < n; ++i)
-            newHands[i] = new HandOverlay(null, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0);
+            newHands[i] = new HandOverlay(a.getResourceId(R.styleable.ClockView_hand_hour, -1), null, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0);
         mHandOverlays = newHands;
     }
 
     public void setDialDrawable(@DrawableRes int drawable) {
-        setDialDrawable(ResourcesCompat.getDrawable(getResources(), drawable, getContext().getTheme()));
+        if (mDialDrawableResId != drawable) {
+            mDialDrawableResId = drawable;
+            setDialDrawableInternal(ResourcesCompat.getDrawable(getResources(), drawable, getContext().getTheme()));
+        }
     }
 
     public void setDialDrawable(@Nullable Drawable drawable) {
-        if (mDialDrawable == drawable)
-            return;
+        if (mDialDrawableResId != drawable) {
+            mDialDrawableResId = -1;
+            setDialDrawableInternal(drawable);
+        }
+    }
 
+    protected void setDialDrawableInternal(@Nullable Drawable drawable) {
         if (mDialDrawable != null)
             mDialDrawable.setCallback(null);
         mDialDrawable = drawable;
         if (mDialDrawable != null)
             mDialDrawable.setCallback(this);
-
         requestLayout();
     }
 
     public void setHandDrawable(int index, @DrawableRes int drawable) {
-        setHandDrawable(index, ResourcesCompat.getDrawable(getResources(), drawable, getContext().getTheme()));
+        final HandOverlay hand = mHandOverlays[index];
+        if (hand.drawableResId != drawable) {
+            hand.drawableResId = drawable;
+            setHandDrawableInternal(hand, ResourcesCompat.getDrawable(getResources(), drawable, getContext().getTheme()));
+        }
     }
 
     public void setHandDrawable(int index, @Nullable Drawable drawable) {
         final HandOverlay hand = mHandOverlays[index];
-        if (hand.drawable == drawable)
-            return;
+        if (hand.drawable != drawable) {
+            hand.drawableResId = -1;
+            setHandDrawableInternal(hand, drawable);
+        }
+    }
 
+    protected void setHandDrawableInternal(HandOverlay hand, @Nullable Drawable drawable) {
         if (hand.drawable != null)
             hand.drawable.setCallback(null);
         hand.drawable = drawable;
         if (hand.drawable != null)
             hand.drawable.setCallback(this);
-
         requestLayout();
     }
 
