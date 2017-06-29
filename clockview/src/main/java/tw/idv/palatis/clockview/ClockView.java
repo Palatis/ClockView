@@ -166,7 +166,7 @@ public class ClockView extends View implements NestedScrollingChild {
         final int count = Math.min(n, mHandOverlays.length);
         System.arraycopy(mHandOverlays, 0, newHands, 0, count);
         for (int i = count; i < n; ++i)
-            newHands[i] = new HandOverlay(a.getResourceId(R.styleable.ClockView_hand_hour, -1), null, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0);
+            newHands[i] = new HandOverlay(-1, null, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0);
         mHandOverlays = newHands;
     }
 
