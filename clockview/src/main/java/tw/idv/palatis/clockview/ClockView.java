@@ -339,7 +339,7 @@ public class ClockView extends View implements NestedScrollingChild {
                 if (mHandIndex != -1) {
                     boolean shouldHandle = false;
                     if (mOnHandChangedListener != null) {
-                        mNestedChildHelper.startNestedScroll(SCROLL_AXIS_HORIZONTAL | SCROLL_AXIS_VERTICAL);
+                        mNestedChildHelper.startNestedScroll(ViewCompat.SCROLL_AXIS_HORIZONTAL | ViewCompat.SCROLL_AXIS_VERTICAL);
                         shouldHandle = mOnHandChangedListener.onHandChangeBegin(this, mHandIndex);
                     }
                     if (shouldHandle) {
