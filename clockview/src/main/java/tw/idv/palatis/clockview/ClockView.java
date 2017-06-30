@@ -334,19 +334,19 @@ public class ClockView extends View implements NestedScrollingChild {
     }
 
     private int getDialWidth() {
-        return mDialDrawable != null ? mDialDrawable.getIntrinsicHeight() : 0;
-    }
-
-    private int getDialHeight() {
         return mDialDrawable != null ? mDialDrawable.getIntrinsicWidth() : 0;
     }
 
+    private int getDialHeight() {
+        return mDialDrawable != null ? mDialDrawable.getIntrinsicHeight() : 0;
+    }
+
     protected int getSuggestedMinimumHeight() {
-        return Math.max(super.getSuggestedMinimumHeight(), getDialWidth());
+        return Math.max(super.getSuggestedMinimumHeight(), getDialHeight());
     }
 
     protected int getSuggestedMinimumWidth() {
-        return Math.max(super.getSuggestedMinimumWidth(), getDialHeight());
+        return Math.max(super.getSuggestedMinimumWidth(), getDialWidth());
     }
 
     private int mHandIndex = -1;
