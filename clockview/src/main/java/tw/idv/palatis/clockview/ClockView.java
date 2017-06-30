@@ -23,6 +23,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 
+import java.util.Arrays;
 import java.util.Calendar;
 
 public class ClockView extends View implements NestedScrollingChild {
@@ -53,6 +54,7 @@ public class ClockView extends View implements NestedScrollingChild {
     private int mDialDrawableResId;
     private Drawable mDialDrawable;
     private HandOverlay[] mHandOverlays;
+    private float[] mTouchPoints;
 
     public static final int HAND_HOUR = 0;
     public static final int HAND_MINUTE = 1;
@@ -172,6 +174,8 @@ public class ClockView extends View implements NestedScrollingChild {
             if (mHandOverlays[HAND_SECOND].drawable != null)
                 mHandOverlays[HAND_SECOND].drawable.setCallback(this);
 
+            mTouchPoints = new float[8];
+
             setScaleTypeInternal(sScaleTypeArray[a.getInteger(R.styleable.ClockView_android_scaleType, 0 /* matrix */)]);
         } finally {
             a.recycle();
@@ -259,6 +263,8 @@ public class ClockView extends View implements NestedScrollingChild {
     }
 
     public void setNumHands(int n) {
+        if (mTouchPoints == null || mTouchPoints.length != (2 + n << 1))
+            mTouchPoints = new float[2 + n << 1];
         final HandOverlay[] newHands = new HandOverlay[n];
         final int count = Math.min(n, mHandOverlays.length);
         System.arraycopy(mHandOverlays, 0, newHands, 0, count);
@@ -440,6 +446,8 @@ public class ClockView extends View implements NestedScrollingChild {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        boolean superResult = super.onTouchEvent(event);
+
         final float eventX = event.getX();
         final float eventY = event.getY();
 
@@ -462,14 +470,14 @@ public class ClockView extends View implements NestedScrollingChild {
                         return true;
                     } else {
                         mHandIndex = -1;
-                        return false;
+                        return superResult;
                     }
                 } else {
-                    return false;
+                    return superResult;
                 }
             case MotionEvent.ACTION_MOVE:
                 if (mHandIndex == -1)
-                    return false;
+                    return superResult;
 
                 if (mNestedChildHelper.isNestedScrollingEnabled())
                     handleHandDrag(mHandIndex, mLastTouchX, mLastTouchY, eventX, eventY);
@@ -486,7 +494,7 @@ public class ClockView extends View implements NestedScrollingChild {
                 mHandIndex = -1;
                 return true;
         }
-        return false;
+        return superResult;
     }
 
     private void handleHandDrag(int index, float oldX, float oldY, float newX, float newY) {
@@ -514,44 +522,43 @@ public class ClockView extends View implements NestedScrollingChild {
     }
 
     private int getHandByLocation(float x, float y) {
-        final int dialWidth = getDialWidth();
-        final int dialHeight = getDialHeight();
-        if (dialWidth == 0 || dialHeight == 0)
+        // dial center
+        mTouchPoints[0] = getDialWidth() / 2.0f;
+        mTouchPoints[1] = getDialHeight() / 2.0f;
+        if (mTouchPoints[0] == 0 || mTouchPoints[1] == 0)
             return -1;
 
-        final int contentCenterX = (getRight() - getLeft()) / 2 + getPaddingLeft();
-        final int contentCenterY = (getBottom() - getTop()) / 2 + getPaddingTop();
-
-        int index = -1;
-        float minLength = Float.POSITIVE_INFINITY;
-        float minArea = Float.POSITIVE_INFINITY;
+        // collect tip position
         for (int i = 0; i < mHandOverlays.length; ++i) {
             final HandOverlay hand = mHandOverlays[i];
             if (hand.drawable == null)
                 continue;
-
-            final int handSize = hand.drawable.getIntrinsicWidth() / 2;
-
+            final float handSize = hand.drawable.getIntrinsicHeight() / 2.0f;
             final float handAngle = (float) Math.toRadians(hand.value * hand.division - hand.startAngle);
-            final float handX1 = contentCenterX + dialWidth * (hand.ratio_cx - 0.5f);
-            final float handY1 = contentCenterY + dialHeight * (hand.ratio_cy - 0.5f);
-            final float handX2 = (float) (Math.cos(handAngle) * handSize + handX1);
-            final float handY2 = (float) (Math.sin(handAngle) * handSize + handY1);
+            mTouchPoints[2 + (i << 1)] = (float) (mTouchPoints[0] + Math.cos(handAngle) * handSize);
+            mTouchPoints[3 + (i << 1)] = (float) (mTouchPoints[1] + Math.sin(handAngle) * handSize);
+        }
 
-            final float length = (float) Math.hypot(x - handX2, y - handY2);
-            final float area = _areaOfTriangle2(x, y, handX1, handY1, handX2, handY2);
-            if ((length == minLength && area < minArea) || length < minLength) {
-                minLength = length;
-                minArea = area;
+        // Log.d(TAG, "getHandByLocation(): touch = (" + x + ", " + y + "), size = (" + getWidth() + ", " + getHeight() + ")");
+        // Log.d(TAG, "getHandByLocation(): points before = " + Arrays.toString(mTouchPoints));
+        mMatrix.mapPoints(mTouchPoints);
+        // Log.d(TAG, "getHandByLocation():  points after = " + Arrays.toString(mTouchPoints));
+
+        // find hand by distance
+        int index = -1;
+        float minDistance = Float.POSITIVE_INFINITY;
+        for (int i = 0; i < mHandOverlays.length; ++i) {
+            final HandOverlay hand = mHandOverlays[i];
+            if (hand.drawable == null)
+                continue;
+            float distance = (float) Math.hypot(x - mTouchPoints[2 + (i << 1)], y - mTouchPoints[3 + (i << 1)]);
+            // Log.d(TAG, "getHandByLocation(): hand " + i + " - distance = " + distance);
+            if (minDistance > distance) {
+                minDistance = distance;
                 index = i;
             }
         }
-
         return index;
-    }
-
-    private float _areaOfTriangle2(float x1, float y1, float x2, float y2, float x3, float y3) {
-        return x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2);
     }
 
     public float getHandValue(int index) {
