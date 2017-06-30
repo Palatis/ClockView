@@ -1,6 +1,7 @@
 package tw.idv.palatis.clockview;
 
 import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -23,7 +24,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 
-import java.util.Arrays;
 import java.util.Calendar;
 
 public class ClockView extends View implements NestedScrollingChild {
@@ -586,7 +586,8 @@ public class ClockView extends View implements NestedScrollingChild {
             }
         } else {
             if (hand.value != value) {
-                final ValueAnimator animator = hand.animator = ValueAnimator.ofFloat(hand.value, value);
+                final float value2 = 360 / hand.division - value;
+                final ValueAnimator animator = hand.animator = ValueAnimator.ofFloat(hand.value, Math.abs(value - hand.value) < Math.abs(value2 - hand.value) ? value : value2);
                 animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                     @Override
                     public void onAnimationUpdate(ValueAnimator animation) {
@@ -594,28 +595,18 @@ public class ClockView extends View implements NestedScrollingChild {
                         postInvalidateOnAnimation();
                     }
                 });
-                animator.addListener(new Animator.AnimatorListener() {
+                animator.addListener(new AnimatorListenerAdapter() {
                     float oldValue = hand.value;
 
                     @Override
-                    public void onAnimationStart(Animator animation) {
-
+                    public void onAnimationCancel(Animator animation) {
+                            hand.value = oldValue;
+                            hand.animator = null;
                     }
 
                     @Override
                     public void onAnimationEnd(Animator animation) {
                         hand.animator = null;
-                    }
-
-                    @Override
-                    public void onAnimationCancel(Animator animation) {
-                        hand.value = oldValue;
-                        hand.animator = null;
-                    }
-
-                    @Override
-                    public void onAnimationRepeat(Animator animation) {
-
                     }
                 });
                 animator.start();
