@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.support.annotation.DrawableRes;
@@ -20,17 +21,31 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.ImageView;
 
 import java.util.Calendar;
 
 public class ClockView extends View implements NestedScrollingChild {
     private static final String TAG = "ClockView";
 
+    private static final ImageView.ScaleType[] sScaleTypeArray = {
+            ImageView.ScaleType.MATRIX,
+            ImageView.ScaleType.FIT_XY,
+            ImageView.ScaleType.FIT_START,
+            ImageView.ScaleType.FIT_CENTER,
+            ImageView.ScaleType.FIT_END,
+            ImageView.ScaleType.CENTER,
+            ImageView.ScaleType.CENTER_CROP,
+            ImageView.ScaleType.CENTER_INSIDE
+    };
+
     private final NestedScrollingChildHelper mNestedChildHelper = new NestedScrollingChildHelper(this);
 
     private Calendar mCalendar;
 
-    private boolean mSizeChanged = true;
+    private ImageView.ScaleType mScaleType = ImageView.ScaleType.MATRIX;
+    private Matrix mCustomMatrix = new Matrix();
+    private Matrix mMatrix = mCustomMatrix;
 
     private boolean mIs24hr;
     private boolean mDrawReversed;
@@ -156,9 +171,89 @@ public class ClockView extends View implements NestedScrollingChild {
             );
             if (mHandOverlays[HAND_SECOND].drawable != null)
                 mHandOverlays[HAND_SECOND].drawable.setCallback(this);
+
+            setScaleTypeInternal(sScaleTypeArray[a.getInteger(R.styleable.ClockView_android_scaleType, 0 /* matrix */)]);
         } finally {
             a.recycle();
         }
+    }
+
+    public void setScaleType(ImageView.ScaleType scaleType) {
+        if (!mScaleType.equals(scaleType))
+            setScaleTypeInternal(scaleType);
+    }
+
+    private void setScaleTypeInternal(ImageView.ScaleType scaleType) {
+        mScaleType = scaleType;
+        if (mScaleType.equals(ImageView.ScaleType.MATRIX)) {
+            if (mMatrix != mCustomMatrix)
+                mMatrix = mCustomMatrix;
+            return;
+        }
+
+        final Matrix matrix = new Matrix();
+        final float width = getContentWidth();
+        final float height = getContentHeight();
+        final float dialWidth = getDialWidth();
+        final float dialHeight = getDialHeight();
+        if (mScaleType.equals(ImageView.ScaleType.FIT_XY)) {
+            matrix.postScale(width / dialWidth, height / dialHeight);
+        } else if (mScaleType.equals(ImageView.ScaleType.FIT_START)) {
+            final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
+            matrix.postScale(scale, scale);
+        } else if (mScaleType.equals(ImageView.ScaleType.FIT_CENTER)) {
+            final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
+            matrix.postScale(scale, scale);
+            matrix.postTranslate((width - dialWidth * scale) / 2, (height - dialHeight * scale) / 2);
+        } else if (mScaleType.equals(ImageView.ScaleType.FIT_END)) {
+            final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
+            matrix.postScale(scale, scale);
+            matrix.postTranslate(width - dialWidth * scale, height - dialHeight * scale);
+        } else if (mScaleType.equals(ImageView.ScaleType.CENTER)) {
+            matrix.postTranslate(width / 2, height / 2);
+            matrix.postTranslate(-dialWidth / 2, -dialHeight / 2);
+        } else if (mScaleType.equals(ImageView.ScaleType.CENTER_CROP)) {
+            final float scale = Math.max(
+                    dialWidth != 0 ? width / dialWidth : 1,
+                    dialHeight != 0 ? height / dialHeight : 1
+            );
+            matrix.postScale(scale, scale);
+            matrix.postTranslate((width - dialWidth * scale) / 2, (height - dialHeight * scale) / 2);
+        } else if (mScaleType.equals(ImageView.ScaleType.CENTER_INSIDE)) {
+            final float scale = Math.min(
+                    width < dialWidth ? width / dialWidth : 1,
+                    height < dialHeight ? height / dialHeight : 1
+            );
+            matrix.postScale(scale, scale);
+            matrix.postTranslate(width / 2, height / 2);
+            matrix.postTranslate(-dialWidth / 2, -dialHeight / 2);
+        }
+        setMatrixInternal(matrix);
+    }
+
+    private void setMatrixInternal(Matrix matrix) {
+        if (!mMatrix.equals(matrix))
+            mMatrix.set(matrix);
+    }
+
+    public ImageView.ScaleType getScaleType() {
+        return mScaleType;
+    }
+
+    public void setImageMatrix(Matrix matrix) {
+        if (matrix == null)
+            matrix = new Matrix();
+
+        if (mMatrix == mCustomMatrix)
+            mMatrix = matrix;
+        if (!mCustomMatrix.equals(matrix))
+            postInvalidate();
+        if (mCustomMatrix != matrix)
+            mCustomMatrix = matrix;
+    }
+
+    public Matrix getImageMatrix() {
+        return mCustomMatrix;
     }
 
     public void setNumHands(int n) {
@@ -187,10 +282,12 @@ public class ClockView extends View implements NestedScrollingChild {
     protected void setDialDrawableInternal(@Nullable Drawable drawable) {
         if (mDialDrawable != null)
             mDialDrawable.setCallback(null);
+        if (mDialDrawable != drawable)
+            setScaleTypeInternal(mScaleType);
         mDialDrawable = drawable;
         if (mDialDrawable != null)
             mDialDrawable.setCallback(this);
-        requestLayout();
+        postInvalidate();
     }
 
     public void setHandDrawable(int index, @DrawableRes int drawable) {
@@ -215,22 +312,25 @@ public class ClockView extends View implements NestedScrollingChild {
         hand.drawable = drawable;
         if (hand.drawable != null)
             hand.drawable.setCallback(this);
-        requestLayout();
+        postInvalidate();
     }
 
     public void setTime(long time) {
         mCalendar.setTimeInMillis(time);
-        postInvalidateOnAnimation();
+        postInvalidate();
     }
 
     public void setTime(Calendar calendar) {
         mCalendar = calendar;
-        postInvalidateOnAnimation();
+        postInvalidate();
     }
 
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        this.mSizeChanged = true;
+        if (w != oldw || h != oldh) {
+            setScaleTypeInternal(mScaleType);
+            postInvalidate();
+        }
     }
 
     protected void onDraw(Canvas canvas) {
@@ -239,57 +339,32 @@ public class ClockView extends View implements NestedScrollingChild {
         if (mDialDrawable == null)
             return;
 
-        boolean sizeChanged = this.mSizeChanged;
-        this.mSizeChanged = false;
-        int contentWidth = getRight() - getPaddingRight() - getPaddingLeft() - getLeft();
-        int contentHeight = getBottom() - getPaddingBottom() - getPaddingTop() - getTop();
-        int cX = contentWidth / 2;
-        int cY = contentHeight / 2;
-        int dialWidth = mDialDrawable.getIntrinsicWidth();
-        int dialHeight = mDialDrawable.getIntrinsicHeight();
-        boolean scaled = false;
-        if (contentWidth < dialWidth || contentHeight < dialHeight) {
-            scaled = true;
-            float scale = Math.min((float) contentWidth / (float) dialWidth, (float) contentHeight / (float) dialHeight);
-            canvas.save();
-            canvas.scale(scale, scale, (float) cX, (float) cY);
-        }
+        canvas.save();
+        canvas.setMatrix(mMatrix);
 
-        if (sizeChanged) {
-            mDialDrawable.setBounds(cX - dialWidth / 2, cY - dialHeight / 2, cX + dialWidth / 2, cY + dialHeight / 2);
-        }
-
+        mDialDrawable.setBounds(0, 0, mDialDrawable.getIntrinsicWidth(), mDialDrawable.getIntrinsicHeight());
         mDialDrawable.draw(canvas);
 
+        canvas.translate(mDialDrawable.getIntrinsicWidth() / 2.0f, mDialDrawable.getIntrinsicHeight() / 2.0f);
         if (mDrawReversed) {
-            for (int i = mHandOverlays.length - 1; i >= 0; --i) {
-                drawHand(canvas, mHandOverlays[i], sizeChanged, dialWidth, dialHeight, cX, cY);
-            }
+            for (int i = mHandOverlays.length - 1; i >= 0; --i)
+                drawHand(canvas, mHandOverlays[i]);
         } else {
             for (final HandOverlay hand : mHandOverlays)
-                drawHand(canvas, hand, sizeChanged, dialWidth, dialHeight, cX, cY);
+                drawHand(canvas, hand);
         }
 
-        if (scaled) {
-            canvas.restore();
-        }
+        canvas.restore();
     }
 
-    private void drawHand(Canvas canvas, HandOverlay hand, boolean sizeChanged, int dialWidth, int dialHeight, int cX, int cY) {
+    private void drawHand(Canvas canvas, HandOverlay hand) {
         if (hand.drawable == null)
             return;
 
-        int handWidth = hand.drawable.getIntrinsicWidth();
-        int handHeight = hand.drawable.getIntrinsicHeight();
-
-        int handX = (int) (dialWidth * (hand.ratio_cx - 0.5f));
-        int handY = (int) (dialHeight * (hand.ratio_cy - 0.5f));
-
-        if (sizeChanged)
-            hand.drawable.setBounds(cX + handX - handWidth / 2, cY + handY - handHeight / 2, cX + handX + handWidth / 2, cY + handY + handHeight / 2);
-
         canvas.save();
-        canvas.rotate(hand.value * hand.division, cX + handX, cY + handY);
+        canvas.rotate(hand.value * hand.division);
+        canvas.translate(-hand.drawable.getIntrinsicWidth() / 2.0f, -hand.drawable.getIntrinsicHeight() / 2.0f);
+        hand.drawable.setBounds(0, 0, hand.drawable.getIntrinsicWidth(), hand.drawable.getIntrinsicHeight());
         hand.drawable.draw(canvas);
         canvas.restore();
     }
@@ -333,6 +408,14 @@ public class ClockView extends View implements NestedScrollingChild {
         setMeasuredDimension(width, height);
     }
 
+    private int getContentHeight() {
+        return getHeight() - getPaddingTop() - getPaddingBottom();
+    }
+
+    private int getContentWidth() {
+        return getWidth() - getPaddingLeft() - getPaddingRight();
+    }
+
     private int getDialWidth() {
         return mDialDrawable != null ? mDialDrawable.getIntrinsicWidth() : 0;
     }
@@ -341,12 +424,12 @@ public class ClockView extends View implements NestedScrollingChild {
         return mDialDrawable != null ? mDialDrawable.getIntrinsicHeight() : 0;
     }
 
-    protected int getSuggestedMinimumHeight() {
-        return Math.max(super.getSuggestedMinimumHeight(), getDialHeight());
-    }
-
     protected int getSuggestedMinimumWidth() {
         return Math.max(super.getSuggestedMinimumWidth(), getDialWidth());
+    }
+
+    protected int getSuggestedMinimumHeight() {
+        return Math.max(super.getSuggestedMinimumHeight(), getDialHeight());
     }
 
     private int mHandIndex = -1;
