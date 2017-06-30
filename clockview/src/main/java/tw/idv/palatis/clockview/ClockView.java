@@ -45,7 +45,7 @@ public class ClockView extends View implements NestedScrollingChild {
 
     private ImageView.ScaleType mScaleType = ImageView.ScaleType.MATRIX;
     private Matrix mCustomMatrix = new Matrix();
-    private Matrix mMatrix = mCustomMatrix;
+    private final Matrix mMatrix = new Matrix();
 
     private boolean mIs24hr;
     private boolean mDrawReversed;
@@ -179,55 +179,56 @@ public class ClockView extends View implements NestedScrollingChild {
     }
 
     public void setScaleType(ImageView.ScaleType scaleType) {
-        if (!mScaleType.equals(scaleType))
+        if (!mScaleType.equals(scaleType)) {
             setScaleTypeInternal(scaleType);
+            postInvalidate();
+        }
     }
 
     private void setScaleTypeInternal(ImageView.ScaleType scaleType) {
         mScaleType = scaleType;
-        if (mScaleType.equals(ImageView.ScaleType.MATRIX)) {
-            if (mMatrix != mCustomMatrix)
-                mMatrix = mCustomMatrix;
-            return;
-        }
-
         final Matrix matrix = new Matrix();
-        final float width = getContentWidth();
-        final float height = getContentHeight();
-        final float dialWidth = getDialWidth();
-        final float dialHeight = getDialHeight();
-        if (mScaleType.equals(ImageView.ScaleType.FIT_XY)) {
-            matrix.postScale(width / dialWidth, height / dialHeight);
-        } else if (mScaleType.equals(ImageView.ScaleType.FIT_START)) {
-            final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
-            matrix.postScale(scale, scale);
-        } else if (mScaleType.equals(ImageView.ScaleType.FIT_CENTER)) {
-            final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
-            matrix.postScale(scale, scale);
-            matrix.postTranslate((width - dialWidth * scale) / 2, (height - dialHeight * scale) / 2);
-        } else if (mScaleType.equals(ImageView.ScaleType.FIT_END)) {
-            final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
-            matrix.postScale(scale, scale);
-            matrix.postTranslate(width - dialWidth * scale, height - dialHeight * scale);
-        } else if (mScaleType.equals(ImageView.ScaleType.CENTER)) {
-            matrix.postTranslate(width / 2, height / 2);
-            matrix.postTranslate(-dialWidth / 2, -dialHeight / 2);
-        } else if (mScaleType.equals(ImageView.ScaleType.CENTER_CROP)) {
-            final float scale = Math.max(
-                    dialWidth != 0 ? width / dialWidth : 1,
-                    dialHeight != 0 ? height / dialHeight : 1
-            );
-            matrix.postScale(scale, scale);
-            matrix.postTranslate((width - dialWidth * scale) / 2, (height - dialHeight * scale) / 2);
-        } else if (mScaleType.equals(ImageView.ScaleType.CENTER_INSIDE)) {
-            final float scale = Math.min(
-                    width < dialWidth ? width / dialWidth : 1,
-                    height < dialHeight ? height / dialHeight : 1
-            );
-            matrix.postScale(scale, scale);
-            matrix.postTranslate(width / 2, height / 2);
-            matrix.postTranslate(-dialWidth / 2, -dialHeight / 2);
+        if (mScaleType.equals(ImageView.ScaleType.MATRIX)) {
+            matrix.set(mCustomMatrix);
+        } else {
+            final float width = getContentWidth();
+            final float height = getContentHeight();
+            final float dialWidth = getDialWidth();
+            final float dialHeight = getDialHeight();
+            if (mScaleType.equals(ImageView.ScaleType.FIT_XY)) {
+                matrix.postScale(width / dialWidth, height / dialHeight);
+            } else if (mScaleType.equals(ImageView.ScaleType.FIT_START)) {
+                final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
+                matrix.postScale(scale, scale);
+            } else if (mScaleType.equals(ImageView.ScaleType.FIT_CENTER)) {
+                final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
+                matrix.postScale(scale, scale);
+                matrix.postTranslate((width - dialWidth * scale) / 2, (height - dialHeight * scale) / 2);
+            } else if (mScaleType.equals(ImageView.ScaleType.FIT_END)) {
+                final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
+                matrix.postScale(scale, scale);
+                matrix.postTranslate(width - dialWidth * scale, height - dialHeight * scale);
+            } else if (mScaleType.equals(ImageView.ScaleType.CENTER)) {
+                matrix.postTranslate(width / 2, height / 2);
+                matrix.postTranslate(-dialWidth / 2, -dialHeight / 2);
+            } else if (mScaleType.equals(ImageView.ScaleType.CENTER_CROP)) {
+                final float scale = Math.max(
+                        dialWidth != 0 ? width / dialWidth : 1,
+                        dialHeight != 0 ? height / dialHeight : 1
+                );
+                matrix.postScale(scale, scale);
+                matrix.postTranslate((width - dialWidth * scale) / 2, (height - dialHeight * scale) / 2);
+            } else if (mScaleType.equals(ImageView.ScaleType.CENTER_INSIDE)) {
+                final float scale = Math.min(
+                        width < dialWidth ? width / dialWidth : 1,
+                        height < dialHeight ? height / dialHeight : 1
+                );
+                matrix.postScale(scale, scale);
+                matrix.postTranslate(width / 2, height / 2);
+                matrix.postTranslate(-dialWidth / 2, -dialHeight / 2);
+            }
         }
+        matrix.postTranslate(getPaddingLeft(), getPaddingTop());
         setMatrixInternal(matrix);
     }
 
@@ -244,12 +245,13 @@ public class ClockView extends View implements NestedScrollingChild {
         if (matrix == null)
             matrix = new Matrix();
 
-        if (mMatrix == mCustomMatrix)
-            mMatrix = matrix;
-        if (!mCustomMatrix.equals(matrix))
-            postInvalidate();
-        if (mCustomMatrix != matrix)
+        if (!mCustomMatrix.equals(matrix)) {
             mCustomMatrix = matrix;
+            if (mScaleType.equals(ImageView.ScaleType.MATRIX)) {
+                setScaleTypeInternal(mScaleType);
+                postInvalidate();
+            }
+        }
     }
 
     public Matrix getImageMatrix() {
@@ -425,11 +427,11 @@ public class ClockView extends View implements NestedScrollingChild {
     }
 
     protected int getSuggestedMinimumWidth() {
-        return Math.max(super.getSuggestedMinimumWidth(), getDialWidth());
+        return Math.max(super.getSuggestedMinimumWidth(), getDialWidth() + getPaddingLeft() + getPaddingRight());
     }
 
     protected int getSuggestedMinimumHeight() {
-        return Math.max(super.getSuggestedMinimumHeight(), getDialHeight());
+        return Math.max(super.getSuggestedMinimumHeight(), getDialHeight() + getPaddingTop() + getPaddingBottom());
     }
 
     private int mHandIndex = -1;
