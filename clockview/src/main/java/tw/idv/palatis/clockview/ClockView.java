@@ -10,6 +10,7 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.drawable.Drawable;
+import android.icu.util.Measure;
 import android.os.Build;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.Nullable;
@@ -55,6 +56,7 @@ public class ClockView extends View implements NestedScrollingChild {
     private Drawable mDialDrawable;
     private HandOverlay[] mHandOverlays;
     private float[] mTouchPoints;
+    private boolean mAdjustViewBounds;
 
     public static final int HAND_HOUR = 0;
     public static final int HAND_MINUTE = 1;
@@ -177,9 +179,25 @@ public class ClockView extends View implements NestedScrollingChild {
             mTouchPoints = new float[8];
 
             setScaleTypeInternal(sScaleTypeArray[a.getInteger(R.styleable.ClockView_android_scaleType, 0 /* matrix */)]);
+            setAdjustViewBounds(a.getBoolean(R.styleable.ClockView_android_adjustViewBounds, false));
         } finally {
             a.recycle();
         }
+    }
+
+    public void setAdjustViewBounds(boolean adjust) {
+        if (mAdjustViewBounds == adjust)
+            return;
+
+        mAdjustViewBounds = adjust;
+        if (mAdjustViewBounds) {
+            setScaleTypeInternal(ImageView.ScaleType.FIT_CENTER);
+            requestLayout();
+        }
+    }
+
+    public boolean getAdjustViewBounds() {
+        return mAdjustViewBounds;
     }
 
     public void setScaleType(ImageView.ScaleType scaleType) {
@@ -413,6 +431,15 @@ public class ClockView extends View implements NestedScrollingChild {
             height = minHeight;
         }
 
+        if (mAdjustViewBounds) {
+            if (widthMode == MeasureSpec.EXACTLY && heightMode == MeasureSpec.AT_MOST) {
+                height = Math.min(heightSize, minHeight * width / minWidth);
+            } else if (widthMode == MeasureSpec.AT_MOST && heightMode == MeasureSpec.EXACTLY) {
+                width = Math.min(widthSize, minWidth * height / minHeight);
+            }
+        }
+
+
         setMeasuredDimension(width, height);
     }
 
@@ -600,8 +627,8 @@ public class ClockView extends View implements NestedScrollingChild {
 
                     @Override
                     public void onAnimationCancel(Animator animation) {
-                            hand.value = oldValue;
-                            hand.animator = null;
+                        hand.value = oldValue;
+                        hand.animator = null;
                     }
 
                     @Override

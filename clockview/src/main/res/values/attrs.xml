@@ -28,6 +28,8 @@
             <enum name="centerInside" value="7" />
         </attr>
 
+        <attr name="android:adjustViewBounds" format="boolean" />
+
         <attr name="is24hr" format="boolean" />
         <attr name="drawReversed" format="boolean" />
         <attr name="hour" format="float" />
