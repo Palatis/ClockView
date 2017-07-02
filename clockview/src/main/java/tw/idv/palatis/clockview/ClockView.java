@@ -610,8 +610,13 @@ public class ClockView extends View implements NestedScrollingChild {
             }
         } else {
             if (hand.value != value) {
-                final float value2 = 360 / hand.division - value;
-                final ValueAnimator animator = hand.animator = ValueAnimator.ofFloat(hand.value, Math.abs(value - hand.value) < Math.abs(value2 - hand.value) ? value : value2);
+                final float value2 = 360 / hand.division + hand.value;
+                final ValueAnimator animator = hand.animator = ValueAnimator.ofFloat(
+                        Math.abs(hand.value - value) < Math.abs(value2 - value) ?
+                                hand.value :
+                                value2,
+                        value
+                );
                 animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                     @Override
                     public void onAnimationUpdate(ValueAnimator animation) {
