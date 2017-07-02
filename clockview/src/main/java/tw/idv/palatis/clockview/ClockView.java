@@ -437,7 +437,6 @@ public class ClockView extends View implements NestedScrollingChild {
             }
         }
 
-
         setMeasuredDimension(width, height);
     }
 
