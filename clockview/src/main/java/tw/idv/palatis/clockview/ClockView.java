@@ -9,6 +9,8 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.icu.util.Measure;
 import android.os.Build;
@@ -213,41 +215,37 @@ public class ClockView extends View implements NestedScrollingChild {
         if (mScaleType.equals(ImageView.ScaleType.MATRIX)) {
             matrix.set(mCustomMatrix);
         } else {
-            final float width = getContentWidth();
-            final float height = getContentHeight();
-            final float dialWidth = getDialWidth();
-            final float dialHeight = getDialHeight();
+            final RectF contentBound = new RectF(0, 0, getContentWidth(), getContentHeight());
+            final RectF dialBound = new RectF(0, 0, getDialWidth(), getDialHeight());
             if (mScaleType.equals(ImageView.ScaleType.FIT_XY)) {
-                matrix.postScale(width / dialWidth, height / dialHeight);
+                matrix.setRectToRect(dialBound, contentBound, Matrix.ScaleToFit.FILL);
             } else if (mScaleType.equals(ImageView.ScaleType.FIT_START)) {
-                final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
-                matrix.postScale(scale, scale);
+                matrix.setRectToRect(dialBound, contentBound, Matrix.ScaleToFit.START);
             } else if (mScaleType.equals(ImageView.ScaleType.FIT_CENTER)) {
-                final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
-                matrix.postScale(scale, scale);
-                matrix.postTranslate((width - dialWidth * scale) / 2, (height - dialHeight * scale) / 2);
+                matrix.setRectToRect(dialBound, contentBound, Matrix.ScaleToFit.CENTER);
             } else if (mScaleType.equals(ImageView.ScaleType.FIT_END)) {
-                final float scale = Math.min(dialWidth != 0 ? width / dialWidth : 1, dialHeight != 0 ? height / dialHeight : 1);
-                matrix.postScale(scale, scale);
-                matrix.postTranslate(width - dialWidth * scale, height - dialHeight * scale);
+                matrix.setRectToRect(dialBound, contentBound, Matrix.ScaleToFit.END);
             } else if (mScaleType.equals(ImageView.ScaleType.CENTER)) {
-                matrix.postTranslate(width / 2, height / 2);
-                matrix.postTranslate(-dialWidth / 2, -dialHeight / 2);
+                matrix.postTranslate(contentBound.width() / 2.0f, contentBound.height() / 2.0f);
+                matrix.postTranslate(-dialBound.width() / 2.0f, -dialBound.height() / 2.0f);
             } else if (mScaleType.equals(ImageView.ScaleType.CENTER_CROP)) {
                 final float scale = Math.max(
-                        dialWidth != 0 ? width / dialWidth : 1,
-                        dialHeight != 0 ? height / dialHeight : 1
+                        dialBound.width() != 0 ? contentBound.width() / dialBound.width() : 1,
+                        dialBound.height() != 0 ? contentBound.height() / dialBound.height() : 1
                 );
                 matrix.postScale(scale, scale);
-                matrix.postTranslate((width - dialWidth * scale) / 2, (height - dialHeight * scale) / 2);
+                matrix.postTranslate(
+                        (contentBound.width() - dialBound.width() * scale) / 2,
+                        (contentBound.height() - dialBound.height() * scale) / 2
+                );
             } else if (mScaleType.equals(ImageView.ScaleType.CENTER_INSIDE)) {
                 final float scale = Math.min(
-                        width < dialWidth ? width / dialWidth : 1,
-                        height < dialHeight ? height / dialHeight : 1
+                        contentBound.width() < dialBound.width() ? contentBound.width() / dialBound.width() : 1,
+                        contentBound.height() < dialBound.height() ? contentBound.height() / dialBound.height() : 1
                 );
                 matrix.postScale(scale, scale);
-                matrix.postTranslate(width / 2, height / 2);
-                matrix.postTranslate(-dialWidth / 2, -dialHeight / 2);
+                matrix.postTranslate(contentBound.width() / 2, contentBound.height() / 2);
+                matrix.postTranslate(-dialBound.width() / 2, -dialBound.width() / 2);
             }
         }
         matrix.postTranslate(getPaddingLeft(), getPaddingTop());
