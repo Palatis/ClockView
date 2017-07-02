@@ -366,7 +366,7 @@ public class ClockView extends View implements NestedScrollingChild {
             return;
 
         canvas.save();
-        canvas.setMatrix(mMatrix);
+        canvas.concat(mMatrix);
 
         mDialDrawable.setBounds(0, 0, mDialDrawable.getIntrinsicWidth(), mDialDrawable.getIntrinsicHeight());
         mDialDrawable.draw(canvas);
