@@ -304,14 +304,22 @@ public class ClockView extends View implements NestedScrollingChild {
     }
 
     protected void setDialDrawableInternal(@Nullable Drawable drawable) {
-        if (mDialDrawable != null)
-            mDialDrawable.setCallback(null);
-        if (mDialDrawable != drawable)
+        final Drawable oldDrawable = mDialDrawable;
+        if (oldDrawable != null)
+            oldDrawable.setCallback(null);
+        if (mDialDrawable != drawable) {
             setScaleTypeInternal(mScaleType);
-        mDialDrawable = drawable;
-        if (mDialDrawable != null)
-            mDialDrawable.setCallback(this);
-        postInvalidate();
+            mDialDrawable = drawable;
+            if (mDialDrawable != null)
+                mDialDrawable.setCallback(this);
+            if (oldDrawable != null && mDialDrawable != null) {
+                if (oldDrawable.getIntrinsicWidth() != mDialDrawable.getIntrinsicWidth() || oldDrawable.getIntrinsicHeight() != mDialDrawable.getIntrinsicHeight()) {
+                    requestLayout();
+                    return;
+                }
+            }
+            postInvalidate();
+        }
     }
 
     public void setHandDrawable(int index, @DrawableRes int drawable) {
