@@ -609,44 +609,36 @@ public class ClockView extends View implements NestedScrollingChild {
         setHandValue(HAND_SECOND, value, true);
     }
 
-    public void setHandValue(int index, float value, boolean animate) {
+    public void setHandValue(int index, float toValue, boolean animate) {
         final HandOverlay hand = mHandOverlays[index];
         if (!animate) {
-            if (hand.value != value) {
-                hand.value = value;
+            if (hand.value != toValue) {
+                hand.value = toValue;
                 postInvalidateOnAnimation();
             }
         } else {
-            if (hand.value != value) {
-                final float value2 = 360 / hand.division + hand.value;
-                final ValueAnimator animator = hand.animator = ValueAnimator.ofFloat(
-                        Math.abs(hand.value - value) < Math.abs(value2 - value) ?
-                                hand.value :
-                                value2,
-                        value
+            if (hand.value != toValue) {
+                if (hand.animator == null) {
+                    hand.animator = new ValueAnimator();
+                    hand.animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                        @Override
+                        public void onAnimationUpdate(ValueAnimator animation) {
+                            hand.value = (float) animation.getAnimatedValue();
+                            postInvalidateOnAnimation();
+                        }
+                    });
+                }
+                hand.animator.cancel();
+                final float fromValue1 = hand.value;
+                final float fromValue2 = hand.value - 360.0f / hand.division;
+                // Log.d(TAG, "setHandValue(): from " + fromValue1 + " (or " + fromValue2 + ") to " + toValue + ", chosen " + (Math.abs(fromValue1 - toValue) < Math.abs(fromValue2 - toValue) ? fromValue1 : fromValue2));
+                hand.animator.setFloatValues(
+                        Math.abs(fromValue1 - toValue) < Math.abs(fromValue2 - toValue) ?
+                                fromValue1 :
+                                fromValue2,
+                        toValue
                 );
-                animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                    @Override
-                    public void onAnimationUpdate(ValueAnimator animation) {
-                        hand.value = (float) animation.getAnimatedValue();
-                        postInvalidateOnAnimation();
-                    }
-                });
-                animator.addListener(new AnimatorListenerAdapter() {
-                    float oldValue = hand.value;
-
-                    @Override
-                    public void onAnimationCancel(Animator animation) {
-                        hand.value = oldValue;
-                        hand.animator = null;
-                    }
-
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        hand.animator = null;
-                    }
-                });
-                animator.start();
+                hand.animator.start();
             }
         }
     }
