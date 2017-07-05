@@ -23,7 +23,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 
-import java.util.Arrays;
 import java.util.Calendar;
 
 public class ClockView extends View implements NestedScrollingChild {
@@ -458,6 +457,7 @@ public class ClockView extends View implements NestedScrollingChild {
             } else if (widthMode == MeasureSpec.AT_MOST && heightMode == MeasureSpec.EXACTLY) {
                 width = Math.min(widthSize, minWidth * height / minHeight);
             }
+            setScaleTypeInternal(mScaleType);
         }
 
         setMeasuredDimension(width, height);
