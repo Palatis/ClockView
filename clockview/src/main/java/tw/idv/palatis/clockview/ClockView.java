@@ -1,7 +1,5 @@
 package tw.idv.palatis.clockview;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -9,10 +7,8 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
-import android.icu.util.Measure;
 import android.os.Build;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.Nullable;
@@ -27,6 +23,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 
+import java.util.Arrays;
 import java.util.Calendar;
 
 public class ClockView extends View implements NestedScrollingChild {
@@ -69,21 +66,21 @@ public class ClockView extends View implements NestedScrollingChild {
         public long interval;
         public float division;
         public float startAngle;
-        public float ratio_cx;
-        public float ratio_cy;
+        public float horizontal_bias;
+        public float vertical_bias;
         @DrawableRes
         public int drawableResId;
         public Drawable drawable;
         public ValueAnimator animator = null;
 
-        public HandOverlay(@DrawableRes int drawableResId, @Nullable Drawable drawable, float value, float division, float startAngle, float ratio_cx, float ratio_cy, long interval) {
+        public HandOverlay(@DrawableRes int drawableResId, @Nullable Drawable drawable, float value, float division, float startAngle, float horizontal_bias, float vertical_bias, long interval) {
             this.drawableResId = drawableResId;
             this.drawable = drawable;
             this.value = value;
             this.division = division;
             this.startAngle = startAngle;
-            this.ratio_cx = ratio_cx;
-            this.ratio_cy = ratio_cy;
+            this.horizontal_bias = horizontal_bias;
+            this.vertical_bias = vertical_bias;
             this.interval = interval;
         }
     }
@@ -178,7 +175,7 @@ public class ClockView extends View implements NestedScrollingChild {
             if (mHandOverlays[HAND_SECOND].drawable != null)
                 mHandOverlays[HAND_SECOND].drawable.setCallback(this);
 
-            mTouchPoints = new float[8];
+            mTouchPoints = new float[6];
 
             setScaleTypeInternal(sScaleTypeArray[a.getInteger(R.styleable.ClockView_android_scaleType, 0 /* matrix */)]);
             setAdjustViewBounds(a.getBoolean(R.styleable.ClockView_android_adjustViewBounds, false));
@@ -279,8 +276,8 @@ public class ClockView extends View implements NestedScrollingChild {
     }
 
     public void setNumHands(int n) {
-        if (mTouchPoints == null || mTouchPoints.length != (2 + n << 1))
-            mTouchPoints = new float[2 + n << 1];
+        if (mTouchPoints == null || mTouchPoints.length != (n << 1))
+            mTouchPoints = new float[n << 1];
         final HandOverlay[] newHands = new HandOverlay[n];
         final int count = Math.min(n, mHandOverlays.length);
         System.arraycopy(mHandOverlays, 0, newHands, 0, count);
@@ -326,7 +323,7 @@ public class ClockView extends View implements NestedScrollingChild {
         final HandOverlay hand = mHandOverlays[index];
         if (hand.drawableResId != drawable) {
             hand.drawableResId = drawable;
-            setHandDrawableInternal(hand, ResourcesCompat.getDrawable(getResources(), drawable, getContext().getTheme()));
+            setHandDrawableInternal(hand, ResourcesCompat.getDrawable(getResources(), drawable, getContext().getTheme()), 0.5f, 0.5f);
         }
     }
 
@@ -334,16 +331,34 @@ public class ClockView extends View implements NestedScrollingChild {
         final HandOverlay hand = mHandOverlays[index];
         if (hand.drawable != drawable) {
             hand.drawableResId = -1;
-            setHandDrawableInternal(hand, drawable);
+            setHandDrawableInternal(hand, drawable, 0.5f, 0.5f);
         }
     }
 
-    protected void setHandDrawableInternal(HandOverlay hand, @Nullable Drawable drawable) {
+    public void setHandDrawable(int index, @DrawableRes int drawable, float horizontal_bias, float vertical_bias) {
+        final HandOverlay hand = mHandOverlays[index];
+        if (hand.drawableResId != drawable) {
+            hand.drawableResId = drawable;
+            setHandDrawableInternal(hand, ResourcesCompat.getDrawable(getResources(), drawable, getContext().getTheme()), horizontal_bias, vertical_bias);
+        }
+    }
+
+    public void setHandDrawable(int index, @Nullable Drawable drawable, float horizontal_bias, float vertical_bias) {
+        final HandOverlay hand = mHandOverlays[index];
+        if (hand.drawable != drawable) {
+            hand.drawableResId = -1;
+            setHandDrawableInternal(hand, drawable, horizontal_bias, vertical_bias);
+        }
+    }
+
+    protected void setHandDrawableInternal(HandOverlay hand, @Nullable Drawable drawable, float horizontal_bias, float vertical_bias) {
         if (hand.drawable != null)
             hand.drawable.setCallback(null);
         hand.drawable = drawable;
         if (hand.drawable != null)
             hand.drawable.setCallback(this);
+        hand.horizontal_bias = horizontal_bias;
+        hand.vertical_bias = vertical_bias;
         postInvalidate();
     }
 
@@ -377,23 +392,23 @@ public class ClockView extends View implements NestedScrollingChild {
         mDialDrawable.setBounds(0, 0, mDialDrawable.getIntrinsicWidth(), mDialDrawable.getIntrinsicHeight());
         mDialDrawable.draw(canvas);
 
-        canvas.translate(mDialDrawable.getIntrinsicWidth() / 2.0f, mDialDrawable.getIntrinsicHeight() / 2.0f);
         if (mDrawReversed) {
             for (int i = mHandOverlays.length - 1; i >= 0; --i)
-                drawHand(canvas, mHandOverlays[i]);
+                drawHand(canvas, mDialDrawable, mHandOverlays[i]);
         } else {
             for (final HandOverlay hand : mHandOverlays)
-                drawHand(canvas, hand);
+                drawHand(canvas, mDialDrawable, hand);
         }
 
         canvas.restore();
     }
 
-    private void drawHand(Canvas canvas, HandOverlay hand) {
+    private void drawHand(Canvas canvas, Drawable dial, HandOverlay hand) {
         if (hand.drawable == null)
             return;
 
         canvas.save();
+        canvas.translate(dial.getIntrinsicWidth() * hand.horizontal_bias, dial.getIntrinsicHeight() * hand.vertical_bias);
         canvas.rotate(hand.value * hand.division);
         canvas.translate(-hand.drawable.getIntrinsicWidth() / 2.0f, -hand.drawable.getIntrinsicHeight() / 2.0f);
         hand.drawable.setBounds(0, 0, hand.drawable.getIntrinsicWidth(), hand.drawable.getIntrinsicHeight());
@@ -529,6 +544,8 @@ public class ClockView extends View implements NestedScrollingChild {
         return superResult;
     }
 
+    private final float[] mDragHandCenter = new float[2];
+
     private void handleHandDrag(int index, float oldX, float oldY, float newX, float newY) {
         final HandOverlay hand = mHandOverlays[index];
 
@@ -537,14 +554,8 @@ public class ClockView extends View implements NestedScrollingChild {
         if (dialWidth == 0 || dialHeight == 0)
             return;
 
-        final int contentCenterX = (getRight() - getLeft()) / 2 + getPaddingLeft();
-        final int contentCenterY = (getBottom() - getTop()) / 2 + getPaddingTop();
-
-        final float handCenterX = contentCenterX + dialWidth * (hand.ratio_cx - 0.5f);
-        final float handCenterY = contentCenterY + dialHeight * (hand.ratio_cy - 0.5f);
-
-        final float angleOld = (float) Math.atan2(oldY - handCenterY, oldX - handCenterX);
-        final float angleNew = (float) Math.atan2(newY - handCenterY, newX - handCenterX);
+        final float angleOld = (float) Math.atan2(oldY - mDragHandCenter[1], oldX - mDragHandCenter[0]);
+        final float angleNew = (float) Math.atan2(newY - mDragHandCenter[1], newX - mDragHandCenter[0]);
 
         final float oldValue = hand.value;
         hand.value += Math.toDegrees(angleNew - angleOld) / hand.division;
@@ -555,9 +566,9 @@ public class ClockView extends View implements NestedScrollingChild {
 
     private int getHandByLocation(float x, float y) {
         // dial center
-        mTouchPoints[0] = getDialWidth() / 2.0f;
-        mTouchPoints[1] = getDialHeight() / 2.0f;
-        if (mTouchPoints[0] == 0 || mTouchPoints[1] == 0)
+        final float dialWidth = getDialWidth();
+        final float dialHeight = getDialHeight();
+        if (dialWidth == 0 || dialHeight == 0)
             return -1;
 
         // collect tip position
@@ -567,8 +578,8 @@ public class ClockView extends View implements NestedScrollingChild {
                 continue;
             final float handSize = hand.drawable.getIntrinsicHeight() / 2.0f;
             final float handAngle = (float) Math.toRadians(hand.value * hand.division - hand.startAngle);
-            mTouchPoints[2 + (i << 1)] = (float) (mTouchPoints[0] + Math.cos(handAngle) * handSize);
-            mTouchPoints[3 + (i << 1)] = (float) (mTouchPoints[1] + Math.sin(handAngle) * handSize);
+            mTouchPoints[i << 1] = (float) (dialWidth * hand.horizontal_bias + Math.cos(handAngle) * handSize);
+            mTouchPoints[(i << 1) + 1] = (float) (dialHeight * hand.vertical_bias + Math.sin(handAngle) * handSize);
         }
 
         // Log.d(TAG, "getHandByLocation(): touch = (" + x + ", " + y + "), size = (" + getWidth() + ", " + getHeight() + ")");
@@ -583,13 +594,17 @@ public class ClockView extends View implements NestedScrollingChild {
             final HandOverlay hand = mHandOverlays[i];
             if (hand.drawable == null)
                 continue;
-            float distance = (float) Math.hypot(x - mTouchPoints[2 + (i << 1)], y - mTouchPoints[3 + (i << 1)]);
+            float distance = (float) Math.hypot(x - mTouchPoints[i << 1], y - mTouchPoints[(i << 1) + 1]);
             // Log.d(TAG, "getHandByLocation(): hand " + i + " - distance = " + distance);
             if (minDistance > distance) {
                 minDistance = distance;
                 index = i;
             }
         }
+
+        mDragHandCenter[0] = dialWidth * mHandOverlays[index].horizontal_bias;
+        mDragHandCenter[1] = dialHeight * mHandOverlays[index].vertical_bias;
+        mMatrix.mapPoints(mDragHandCenter);
         return index;
     }
 
