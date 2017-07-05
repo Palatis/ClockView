@@ -201,7 +201,10 @@ public class ClockView extends View implements NestedScrollingChild {
     public void setScaleType(ImageView.ScaleType scaleType) {
         if (!mScaleType.equals(scaleType)) {
             setScaleTypeInternal(scaleType);
-            postInvalidate();
+            if (mAdjustViewBounds)
+                requestLayout();
+            else
+                postInvalidate();
         }
     }
 
